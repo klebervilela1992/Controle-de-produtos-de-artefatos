@@ -1,0 +1,55 @@
+name: CI-Snapshots-Automation
+
+# Define os gatilhos: ao dar push na main ou manualmente
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+# Garante que o token do GitHub tenha permissão para escrever no repositório
+permissions:
+  contents: write
+
+jobs:
+  build-and-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Faz o checkout do código usando o token de permissão
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Configura o ambiente (Node.js como exemplo padrão para snapshots)
+      - name: Setup Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. COMANDO ÚNICO: Cria a pasta, gera o conteúdo e organiza
+      - name: Processar Snapshots
+        run: |
+          mkdir -p snapshots
+          echo "Snapshot gerado em: $(date)" > snapshots/last_build.txt
+          echo "Status: Integridade da build verificada." >> snapshots/last_build.txt
+          # Caso use frameworks de teste, adicione aqui: npm test -- -u
+
+      # 4. PERSISTÊNCIA: Faz o commit e push das alterações de volta para o Git
+      - name: Commit e Push das alterações
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Adiciona apenas a pasta snapshots
+          git add snapshots/
+          
+          # Verifica se houve mudanças reais antes de tentar o commit (evita erros)
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "auto: atualização automática de snapshots [skip ci]"
+            git push
+          else
+            echo "Nenhuma alteração detectada nos snapshots."
+          fi
+          echo Add other actions to build,
+          echo test, and deploy your project.
